@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   // fetch current user
   const fetchUser = async () => {
     try {
-      const res = await api.get("/user/profile")
+      const res = await api.get("/user/profile");
       // const res = await api.get("/user/profile", {
       //   headers: {
       //     Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
 
   // *
   const updateUser = (updatedUser) => {
-    setUser(updatedUser)
+    setUser(updatedUser);
   }
 
   useEffect(() => {

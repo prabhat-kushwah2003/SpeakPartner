@@ -1,11 +1,11 @@
-import { Home, Users, History, LogOut, Target } from "lucide-react";
+import { Home, Users, LogOut, Target } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 const Sidebar = () => {
 
-  const {logout} = useAuth()
+  const { logout } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -52,15 +52,6 @@ const Sidebar = () => {
           >
             <Users size={20} />
             Online Learners
-          </NavLink>
-
-          {/* History */}
-          <NavLink
-            to="/history"
-            className={({ isActive }) => (isActive ? activeClass : normalClass)}
-          >
-            <History size={20} />
-            History
           </NavLink>
         </nav>
 

@@ -6,7 +6,6 @@ import profileRoutes from "./routes/profile.routes.js";
 import verificationRoutes from "./routes/verification.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import onlineRoutes from "./routes/online.routes.js";
-import callHistoryRoutes from "./routes/callHistory.routes.js";
 import userRoutes from "./routes/userRoutes.routes.js"
 
 
@@ -33,8 +32,6 @@ app.use("/verification", verificationRoutes);
 app.use("/admin", adminRoutes);
 
 app.use("/online", onlineRoutes);
-
-app.use("/calls", callHistoryRoutes);
 
 app.use("/user", userRoutes)
 

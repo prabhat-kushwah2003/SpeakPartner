@@ -8,12 +8,30 @@ function Header() {
   const [preview, setPreview] = useState(""); //*
   // modal state
   const [openModal, setOpenModal] = useState(false);
+  const [currentDate, setCurrentDate] = useState("");
 
-  useEffect(() => { // *
+  useEffect(() => {
+    // *
     if (user) {
       setPreview(user?.avatar);
     }
   }, [user]);
+
+  useEffect(() => {
+    // Set current date dynamically
+    const formatDate = () => {
+      const date = new Date();
+      const options = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+      return date.toLocaleDateString("en-US", options);
+    };
+
+    setCurrentDate(formatDate());
+  }, []);
 
   return (
     <>
@@ -21,7 +39,7 @@ function Header() {
         {/* Left side */}
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Welcome</h2>
-          <p className="text-sm text-gray-500">Sunday, February 1, 2026</p>
+          <p className="text-sm text-gray-500">{currentDate}</p>
         </div>
 
         {/* Right side - PROFILE SECTION */}

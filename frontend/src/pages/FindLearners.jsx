@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import { useAuth } from "../auth/AuthContext";
 
 function FindLearners() {
   const [users, setUsers] = useState([]);
   const [socket, setSocket] = useState(null);
+  const { user } = useAuth();
 
   // create socket connection
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
 
     if (!token) return;
 
@@ -55,6 +57,9 @@ function FindLearners() {
     return () => socket.off("online-users");
   }, [socket]);
 
+  // Filter out current user from the list
+  const filteredUsers = users.filter((u) => u._id !== user?._id);
+
   return (
     <div className="p-6">
       {/* Title */}
@@ -72,14 +77,14 @@ function FindLearners() {
         <div className="flex items-center gap-2 mb-6">
           <span className="w-3 h-3 bg-green-500 rounded-full"></span>
           <h2 className="text-xl font-semibold">
-            Online Users ({users.length})
+            Online Users ({filteredUsers.length})
           </h2>
         </div>
 
         {/* Users Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {Array.isArray(users) &&
-            users.map((user) => (
+          {Array.isArray(filteredUsers) &&
+            filteredUsers.map((user) => (
               <div
                 key={user._id}
                 className="bg-gray-50 rounded-2xl p-8 flex flex-col items-center hover:shadow-md transition cursor-pointer"

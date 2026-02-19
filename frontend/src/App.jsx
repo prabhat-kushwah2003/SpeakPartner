@@ -7,7 +7,6 @@ import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 // import Sidebar from "./components/Sidebar.jsx";
 import AppLayout from "./layouts/AppLayout.jsx";
 import FindLearners from "./pages/FindLearners.jsx";
-import History from "./pages/History.jsx";
 import CallPage from "./pages/CallPage.jsx";
 
 function App() {
@@ -37,17 +36,7 @@ function App() {
               </AppLayout>
             </ProtectedRoute>
           }
-        ></Route>
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <History />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        ></Route>
+        />
         <Route
           path="/call"
           element={
@@ -55,7 +44,7 @@ function App() {
               <CallPage />
             </ProtectedRoute>
           }
-        ></Route>
+        />
       </Routes>
     </BrowserRouter>
   );
