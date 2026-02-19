@@ -1,5 +1,6 @@
 import { useContext, useState, createContext, useEffect } from "react";
 import api from "../api/axios.js";
+import { connectSocket, disconnectSocket } from "../socket.js";
 
 // create context
 const AuthContext = createContext(null);
@@ -16,12 +17,6 @@ export const AuthProvider = ({ children }) => {
   const fetchUser = async () => {
     try {
       const res = await api.get("/user/profile");
-      // const res = await api.get("/user/profile", {
-      //   headers: {
-      //     Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      //   },
-      // });
-
       setUser(res.data);
     } catch (error) {
       logout();
@@ -32,10 +27,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
 
-    localStorage.setItem("accessToken", res.data.accessToken);
-    // localStorage.setItem("token", res.data.accessToken) // *
+    const token = res.data.accessToken;
+    localStorage.setItem("accessToken", token);
 
     setIsAuthenticated(true);
+
+    // Connect socket immediately after login with the fresh token
+    connectSocket(token);
 
     fetchUser();
   };
@@ -43,19 +41,26 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = () => {
     localStorage.removeItem("accessToken");
-    // localStorage.removeItem("token")
     setIsAuthenticated(false);
     setUser(null);
+
+    // Disconnect socket on logout so user goes offline
+    disconnectSocket();
   };
 
   // *
   const updateUser = (updatedUser) => {
     setUser(updatedUser);
-  }
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchUser();
+      // Reconnect socket on page refresh if already authenticated
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        connectSocket(token);
+      }
     }
   }, [isAuthenticated]);
 
@@ -66,7 +71,7 @@ export const AuthProvider = ({ children }) => {
         user,
         login,
         logout,
-        updateUser
+        updateUser,
       }}
     >
       {children}

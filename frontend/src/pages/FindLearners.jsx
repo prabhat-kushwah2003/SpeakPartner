@@ -1,38 +1,19 @@
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
 import { useAuth } from "../auth/AuthContext";
+import socket from "../socket";
 
 function FindLearners() {
   const [users, setUsers] = useState([]);
-  const [socket, setSocket] = useState(null);
   const { user } = useAuth();
 
-  // create socket connection
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-
-    if (!token) return;
-
-    const s = io("http://localhost:5000", {
-      auth: { token },
-    });
-
-    setSocket(s);
-
-    return () => s.disconnect();
-  }, []);
-
-  // fetch from backend
+  // fetch online users from backend endpoint
   const fetchOnlineUsers = async () => {
     try {
-      const res = await fetch(
-        "http://localhost:5000/user/online-users", // ✅ FULL URL FIX
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
+      const res = await fetch("http://localhost:5000/user/online-users", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
-      );
+      });
 
       const data = await res.json();
       setUsers(data);
@@ -41,21 +22,23 @@ function FindLearners() {
     }
   };
 
-  // initial fetch on load
+  // initial fetch on page load
   useEffect(() => {
     fetchOnlineUsers();
   }, []);
 
-  // listen for online users from backend
+  // listen for real-time online-users updates using the shared singleton socket
   useEffect(() => {
-    if (!socket) return;
-
-    socket.on("online-users", () => {
+    const handleOnlineUsers = () => {
       fetchOnlineUsers();
-    });
+    };
 
-    return () => socket.off("online-users");
-  }, [socket]);
+    socket.on("online-users", handleOnlineUsers);
+
+    return () => {
+      socket.off("online-users", handleOnlineUsers);
+    };
+  }, []);
 
   // Filter out current user from the list
   const filteredUsers = users.filter((u) => u._id !== user?._id);

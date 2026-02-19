@@ -16,13 +16,12 @@ const VideoCall = ({ sessionId, partnerId }) => {
   const [isMicOn, setIsMicOn] = useState(true);
   const [callStatus, setCallStatus] = useState("Connecting...");
 
+  // Buffer ICE candidates that arrive before remote description is set
+  const pendingCandidatesRef = useRef([]);
+  const remoteDescSetRef = useRef(false);
+
   useEffect(() => {
     init();
-
-    socket.on("call-offer", onOffer);
-    socket.on("call-answer", onAnswer);
-    socket.on("ice-candidate", onIce);
-    socket.on("end-call", handlePartnerDisconnect);
 
     return () => {
       socket.off("call-offer");
@@ -41,16 +40,23 @@ const VideoCall = ({ sessionId, partnerId }) => {
       });
 
       setLocalStream(stream);
-      localRef.current.srcObject = stream;
+      if (localRef.current) {
+        localRef.current.srcObject = stream;
+      }
 
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+        ],
       });
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (e) => {
-        remoteRef.current.srcObject = e.streams[0];
+        if (remoteRef.current) {
+          remoteRef.current.srcObject = e.streams[0];
+        }
         setCallStatus("Connected");
       };
 
@@ -67,16 +73,95 @@ const VideoCall = ({ sessionId, partnerId }) => {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "connected") {
           setCallStatus("Connected");
-        } else if (pc.connectionState === "disconnected") {
+        } else if (
+          pc.connectionState === "disconnected" ||
+          pc.connectionState === "failed"
+        ) {
           setCallStatus("Disconnected");
         }
       };
 
+      // Assign pc BEFORE registering socket handlers so handlers never see null
       pcRef.current = pc;
 
-      // Auto-initiate call: user with smaller ID starts the call
+      // === Register socket handlers here, AFTER pcRef is assigned ===
+
+      socket.on("call-offer", async ({ offer, from }) => {
+        if (!pcRef.current) return;
+        try {
+          await pcRef.current.setRemoteDescription(
+            new RTCSessionDescription(offer)
+          );
+          remoteDescSetRef.current = true;
+
+          // Flush any buffered ICE candidates
+          for (const candidate of pendingCandidatesRef.current) {
+            try {
+              await pcRef.current.addIceCandidate(
+                new RTCIceCandidate(candidate)
+              );
+            } catch (err) {
+              console.error("Error adding buffered ICE candidate:", err);
+            }
+          }
+          pendingCandidatesRef.current = [];
+
+          const answer = await pcRef.current.createAnswer();
+          await pcRef.current.setLocalDescription(answer);
+
+          socket.emit("call-answer", {
+            sessionId,
+            answer,
+            to: from,
+          });
+        } catch (error) {
+          console.error("Error handling offer:", error);
+        }
+      });
+
+      socket.on("call-answer", async ({ answer }) => {
+        if (!pcRef.current) return;
+        try {
+          await pcRef.current.setRemoteDescription(
+            new RTCSessionDescription(answer)
+          );
+          remoteDescSetRef.current = true;
+
+          // Flush any buffered ICE candidates
+          for (const candidate of pendingCandidatesRef.current) {
+            try {
+              await pcRef.current.addIceCandidate(
+                new RTCIceCandidate(candidate)
+              );
+            } catch (err) {
+              console.error("Error adding buffered ICE candidate:", err);
+            }
+          }
+          pendingCandidatesRef.current = [];
+        } catch (error) {
+          console.error("Error handling answer:", error);
+        }
+      });
+
+      socket.on("ice-candidate", async ({ candidate }) => {
+        if (!pcRef.current || !candidate) return;
+        try {
+          if (remoteDescSetRef.current) {
+            await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          } else {
+            // Remote description not yet set — buffer the candidate
+            pendingCandidatesRef.current.push(candidate);
+          }
+        } catch (error) {
+          console.error("Error adding ICE candidate:", error);
+        }
+      });
+
+      socket.on("end-call", handlePartnerDisconnect);
+
+      // Initiate the call: the user with the lexicographically smaller ID sends the offer
       if (user?._id < partnerId) {
-        setTimeout(() => startCall(), 1000);
+        await startCall();
       }
     } catch (error) {
       console.error("Permission denied:", error);
@@ -99,39 +184,6 @@ const VideoCall = ({ sessionId, partnerId }) => {
       });
     } catch (error) {
       console.error("Error starting call:", error);
-    }
-  };
-
-  const onOffer = async ({ offer, from }) => {
-    try {
-      await pcRef.current.setRemoteDescription(offer);
-
-      const answer = await pcRef.current.createAnswer();
-      await pcRef.current.setLocalDescription(answer);
-
-      socket.emit("call-answer", {
-        sessionId,
-        answer,
-        to: from,
-      });
-    } catch (error) {
-      console.error("Error handling offer:", error);
-    }
-  };
-
-  const onAnswer = async ({ answer }) => {
-    try {
-      await pcRef.current.setRemoteDescription(answer);
-    } catch (error) {
-      console.error("Error handling answer:", error);
-    }
-  };
-
-  const onIce = async ({ candidate }) => {
-    try {
-      await pcRef.current.addIceCandidate(candidate);
-    } catch (error) {
-      console.error("Error adding ICE candidate:", error);
     }
   };
 
@@ -166,6 +218,9 @@ const VideoCall = ({ sessionId, partnerId }) => {
   const cleanup = () => {
     localStream?.getTracks().forEach((track) => track.stop());
     pcRef.current?.close();
+    pcRef.current = null;
+    remoteDescSetRef.current = false;
+    pendingCandidatesRef.current = [];
   };
 
   return (
@@ -184,6 +239,7 @@ const VideoCall = ({ sessionId, partnerId }) => {
             <video
               ref={remoteRef}
               autoPlay
+              playsInline
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded-lg text-sm">
@@ -197,6 +253,7 @@ const VideoCall = ({ sessionId, partnerId }) => {
               ref={localRef}
               autoPlay
               muted
+              playsInline
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded-lg text-sm">
