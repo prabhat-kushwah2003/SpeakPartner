@@ -15,7 +15,7 @@ function EditProfileModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (user) {
-      setPreview(`http://localhost:5000${user.avatar}`); // *
+      setPreview(`${import.meta.env.VITE_API_URL}${user.avatar}`); // *
       setUsername(user.username);
     }
   }, [user]);

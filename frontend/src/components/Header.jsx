@@ -57,7 +57,7 @@ function Header() {
           <img
             src={
               user?.avatar
-                ? `http://localhost:5000${user.avatar}`
+                ? `${import.meta.env.VITE_API_URL}${user.avatar}`
                 : "https://i.pravatar.cc/40"
             }
             // src={preview}

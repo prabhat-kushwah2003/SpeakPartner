@@ -9,11 +9,14 @@ function FindLearners() {
   // fetch online users from backend endpoint
   const fetchOnlineUsers = async () => {
     try {
-      const res = await fetch("http://localhost:5000/user/online-users", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/user/online-users`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
         },
-      });
+      );
 
       const data = await res.json();
       setUsers(data);
@@ -75,7 +78,7 @@ function FindLearners() {
                 {/* Avatar */}
                 <div className="relative">
                   <img
-                    src={`http://localhost:5000${user.avatar}`}
+                    src={`${import.meta.env.VITE_API_URL}${user.avatar}`}
                     alt="avatar"
                     className="w-24 h-24 rounded-full object-cover border-4 border-white shadow"
                   />
