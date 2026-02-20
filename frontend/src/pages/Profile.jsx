@@ -15,7 +15,7 @@ function Profile() {
     try {
       const res = await api.post("/user/avatar", formData);
 
-      setAvatarUrl(`http://localhost5000${res.data.avatar}`);
+      setAvatarUrl(`${import.meta.env.VITE_API_URL}${res.data.avatar}`);
     } catch (error) {
       alert("Upload failed");
     }
