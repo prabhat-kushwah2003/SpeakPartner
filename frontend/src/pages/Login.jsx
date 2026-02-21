@@ -10,6 +10,7 @@ function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // get login function from context
   // this is custom hook
@@ -85,14 +86,27 @@ function Login() {
         <div className="flex items-center border rounded-lg px-3 mt-1 mb-2">
           <Lock size={16} className="text-gray-400" />
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="******"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             className="w-full p-2 outline-none"
           />
-          <Eye size={16} className="text-gray-400 cursor-pointer" />
+          {showPassword ? (
+            <EyeOff
+              size={16}
+              onClick={() => setShowPassword(false)}
+              className="text-gray-400 cursor-pointer"
+            />
+          ) : (
+            <Eye
+              size={16}
+              onClick={() => setShowPassword(true)}
+              className="text-gray-400 cursor-pointer"
+            />
+          )}
+          {/* <Eye size={16} className="text-gray-400 cursor-pointer" /> */}
         </div>
 
         {/* remember + forgot */}
@@ -111,7 +125,7 @@ function Login() {
           disabled={loading}
           className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50"
         >
-          {loading ? "Logging in..." : "Sign in"}
+          {loading ? "Logging in..." : "Log in"}
         </button>
 
         {/* Divider */}
