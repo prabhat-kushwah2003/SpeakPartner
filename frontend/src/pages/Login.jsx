@@ -3,7 +3,7 @@ import { useState } from "react";
 import api from "../api/axios.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, Eye } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 function Login() {
   const [email, setEmail] = useState("");

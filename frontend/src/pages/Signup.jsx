@@ -1,7 +1,7 @@
 import { useState } from "react";
 import api from "../api/axios.js";
 import { Link } from "react-router-dom";
-import { User, Mail, Lock, Eye } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 function Signup() {
   const [username, setUsername] = useState("");
