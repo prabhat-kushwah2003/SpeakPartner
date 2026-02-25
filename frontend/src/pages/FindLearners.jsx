@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import socket from "../socket";
+import { getAvatarUrl } from "../utils/avatarUtils.js";
 
 function FindLearners() {
   const [users, setUsers] = useState([]);
@@ -25,21 +26,24 @@ function FindLearners() {
     }
   };
 
-  // initial fetch on page load
+  // Fetch on mount + listen for real-time updates
   useEffect(() => {
+    // Always fetch immediately on mount
     fetchOnlineUsers();
-  }, []);
 
-  // listen for real-time online-users updates using the shared singleton socket
-  useEffect(() => {
     const handleOnlineUsers = () => {
       fetchOnlineUsers();
     };
 
+    // Listen for real-time online-users updates
     socket.on("online-users", handleOnlineUsers);
+
+    // If socket reconnects while this page is open, re-fetch
+    socket.on("connect", handleOnlineUsers);
 
     return () => {
       socket.off("online-users", handleOnlineUsers);
+      socket.off("connect", handleOnlineUsers);
     };
   }, []);
 
@@ -78,7 +82,7 @@ function FindLearners() {
                 {/* Avatar */}
                 <div className="relative">
                   <img
-                    src={`${import.meta.env.VITE_API_URL}${user.avatar}`}
+                    src={getAvatarUrl(user.avatar)}
                     alt="avatar"
                     className="w-24 h-24 rounded-full object-cover border-4 border-white shadow"
                   />

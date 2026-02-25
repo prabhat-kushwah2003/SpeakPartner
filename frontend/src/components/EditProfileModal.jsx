@@ -13,6 +13,7 @@ function EditProfileModal({ isOpen, onClose }) {
   const [preview, setPreview] = useState("");
   const [username, setUsername] = useState("");
   const [file, setFile] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -39,6 +40,8 @@ function EditProfileModal({ isOpen, onClose }) {
 
   // save button logic
   const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       // Update username
       const profileRes = await api.put("/user/profile", { username });
@@ -62,6 +65,8 @@ function EditProfileModal({ isOpen, onClose }) {
       onClose();
     } catch (error) {
       console.log("Update failed:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -124,9 +129,10 @@ function EditProfileModal({ isOpen, onClose }) {
         {/* Save Button */}
         <button
           onClick={handleSave}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-semibold"
+          disabled={isSaving}
+          className={`w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-semibold ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          Save Changes
+          {isSaving ? "Saving..." : "Save Changes"}
         </button>
       </div>
     </div>
