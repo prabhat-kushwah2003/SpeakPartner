@@ -5,69 +5,61 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 /**
- * Returns the date string for "today" in YYYY-MM-DD format.
+ * Gets or initializes the daily time data from localStorage.
+ * Format: { date: "YYYY-MM-DD", minutes: number }
+ * Resets to 0 if the stored date is not today (midnight reset).
  */
-function getTodayDateStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/**
- * Returns a valid login timestamp for today.
- * - If a stored timestamp exists and its date matches today, returns it.
- * - Otherwise, stores NOW as the timestamp and returns it (midnight reset).
- */
-function getOrSetLoginTimestamp() {
-  const stored = localStorage.getItem("loginTimestamp");
-  if (stored) {
-    const storedDate = new Date(Number(stored)).toISOString().slice(0, 10);
-    if (storedDate === getTodayDateStr()) {
-      return Number(stored);
+function getDailyTimeData() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const stored = JSON.parse(localStorage.getItem("dailyTimeData"));
+    if (stored && stored.date === today) {
+      return stored;
     }
+  } catch (e) {
+    // corrupted data — reset
   }
-  // Either no timestamp or it's from a previous day — reset
-  const now = Date.now();
-  localStorage.setItem("loginTimestamp", now.toString());
-  return now;
+  // Either no data, different date, or corrupted — start fresh
+  const fresh = { date: today, minutes: 0 };
+  localStorage.setItem("dailyTimeData", JSON.stringify(fresh));
+  return fresh;
 }
 
 const Sidebar = () => {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [minutes, setMinutes] = useState(0);
+  const [minutes, setMinutes] = useState(() => getDailyTimeData().minutes);
 
-  // Calculate elapsed minutes from the stored login timestamp
+  // Increment timer every 60 seconds while authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const loginTs = getOrSetLoginTimestamp();
+    // Sync display with stored value on mount
+    setMinutes(getDailyTimeData().minutes);
 
-    // Immediately calculate elapsed minutes
-    const calcMinutes = () => {
-      const today = getTodayDateStr();
-      const storedDate = new Date(loginTs).toISOString().slice(0, 10);
+    const intervalId = setInterval(() => {
+      const data = getDailyTimeData();
+      const today = new Date().toISOString().slice(0, 10);
 
-      // If midnight crossed, reset the timestamp
-      if (storedDate !== today) {
-        const now = Date.now();
-        localStorage.setItem("loginTimestamp", now.toString());
+      if (data.date !== today) {
+        // Midnight crossed — reset
+        const fresh = { date: today, minutes: 0 };
+        localStorage.setItem("dailyTimeData", JSON.stringify(fresh));
         setMinutes(0);
-        return;
+      } else {
+        // Increment by 1 minute
+        data.minutes += 1;
+        localStorage.setItem("dailyTimeData", JSON.stringify(data));
+        setMinutes(data.minutes);
       }
-
-      const elapsed = Math.floor((Date.now() - loginTs) / 60000);
-      setMinutes(elapsed);
-    };
-
-    calcMinutes();
-
-    const intervalId = setInterval(calcMinutes, 60000); // update every minute
+    }, 60000); // every minute
 
     return () => clearInterval(intervalId);
   }, [isAuthenticated]);
 
   const handleLogout = () => {
-    localStorage.removeItem("loginTimestamp");
+    // Do NOT clear timer data — it should persist across logout
     logout();
     navigate("/");
   };

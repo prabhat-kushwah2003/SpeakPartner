@@ -14,7 +14,7 @@ function FindLearners() {
         `${import.meta.env.VITE_API_URL}/user/online-users`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: `Bearer ${sessionStorage.getItem("accessToken")}`,
           },
         },
       );

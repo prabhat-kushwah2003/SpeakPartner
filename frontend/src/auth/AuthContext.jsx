@@ -8,7 +8,7 @@ const AuthContext = createContext(null);
 // provider component
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(
-    !!localStorage.getItem("accessToken"),
+    !!sessionStorage.getItem("accessToken"),
   );
 
   const [user, setUser] = useState(null);
@@ -19,7 +19,12 @@ export const AuthProvider = ({ children }) => {
       const res = await api.get("/user/profile");
       setUser(res.data);
     } catch (error) {
-      logout();
+      // Don't call logout() here — the axios interceptor handles 401 refresh.
+      // Only clear auth state if we truly can't recover.
+      if (error.response?.status === 401) {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
     }
   };
 
@@ -27,28 +32,33 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
 
-    const token = res.data.accessToken;
-    localStorage.setItem("accessToken", token);
-
-    // Set login timestamp for today's time tracking (only if not already set for today)
-    const existing = localStorage.getItem("loginTimestamp");
-    const today = new Date().toISOString().slice(0, 10);
-    if (!existing || new Date(Number(existing)).toISOString().slice(0, 10) !== today) {
-      localStorage.setItem("loginTimestamp", Date.now().toString());
-    }
+    const { accessToken, refreshToken } = res.data;
+    sessionStorage.setItem("accessToken", accessToken);
+    sessionStorage.setItem("refreshToken", refreshToken);
 
     setIsAuthenticated(true);
 
     // Connect socket immediately after login with the fresh token
-    connectSocket(token);
+    connectSocket(accessToken);
 
     fetchUser();
   };
 
   // Logout function
-  const logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("loginTimestamp");
+  const logout = async () => {
+    // Call backend to invalidate refresh token
+    try {
+      const refreshToken = sessionStorage.getItem("refreshToken");
+      if (refreshToken) {
+        await api.post("/auth/logout", { refreshToken });
+      }
+    } catch (e) {
+      // Ignore errors — we're logging out anyway
+    }
+
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("refreshToken");
+    // NOTE: Do NOT remove loginTimestamp — timer should persist across logout
     setIsAuthenticated(false);
     setUser(null);
 
@@ -65,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     if (isAuthenticated) {
       fetchUser();
       // Reconnect socket on page refresh if already authenticated
-      const token = localStorage.getItem("accessToken");
+      const token = sessionStorage.getItem("accessToken");
       if (token) {
         connectSocket(token);
       }
@@ -91,3 +101,4 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   return useContext(AuthContext);
 };
+
