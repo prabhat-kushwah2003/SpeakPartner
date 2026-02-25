@@ -1,21 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import EditProfileModal from "../components/EditProfileModal.jsx";
+import { getAvatarUrl } from "../utils/avatarUtils.js";
 
 function Header() {
   const { user } = useAuth();
 
-  const [preview, setPreview] = useState(""); //*
   // modal state
   const [openModal, setOpenModal] = useState(false);
   const [currentDate, setCurrentDate] = useState("");
-
-  useEffect(() => {
-    // *
-    if (user) {
-      setPreview(user?.avatar);
-    }
-  }, [user]);
 
   useEffect(() => {
     // Set current date dynamically
@@ -55,12 +48,7 @@ function Header() {
 
           {/* Avatar Clickable */}
           <img
-            src={
-              user?.avatar
-                ? `${import.meta.env.VITE_API_URL}${user.avatar}`
-                : "https://i.pravatar.cc/40"
-            }
-            // src={preview}
+            src={getAvatarUrl(user?.avatar)}
             alt="avatar"
             onClick={() => setOpenModal(true)}
             className="w-11 h-11 rounded-full border-2 border-purple-500 cursor-pointer"

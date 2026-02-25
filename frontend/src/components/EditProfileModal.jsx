@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { useEffect } from "react";
 import api from "../api/axios.js";
+import { getAvatarUrl } from "../utils/avatarUtils.js";
 
 function EditProfileModal({ isOpen, onClose }) {
   const fileRef = useRef(null);
@@ -15,7 +16,7 @@ function EditProfileModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (user) {
-      setPreview(`${import.meta.env.VITE_API_URL}${user.avatar}`); // *
+      setPreview(getAvatarUrl(user.avatar));
       setUsername(user.username);
     }
   }, [user]);
@@ -32,13 +33,12 @@ function EditProfileModal({ isOpen, onClose }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    setFile(file); // *
+    setFile(file);
     setPreview(URL.createObjectURL(file));
   };
 
   // save button logic
   const handleSave = async () => {
-    // *
     try {
       // Update username
       const profileRes = await api.put("/user/profile", { username });
@@ -52,42 +52,17 @@ function EditProfileModal({ isOpen, onClose }) {
 
         const avatarRes = await api.post("/user/avatar", formData);
 
-        updatedUser.avatar = avatarRes.data.avatar;
+        // The API returns the full user object, use it directly
+        updatedUser = avatarRes.data;
       }
 
-      // it render header so that same time header also change profile and username
+      // Update auth context so Header re-renders immediately
       updateUser(updatedUser);
 
-      console.log("Profile updated");
       onClose();
-
-      // let updated = { ...user };
-
-      // // upload avatar if selected
-      // if (file) {
-      //   const formData = new FormData();
-      //   formData.append("avatar", file);
-
-      //   const res = await api.post("/user/avatar", formData, {
-      //     headers: { "Content-Type": "multipart/form-data" },
-      //   });
-      //   updated.avatar = res.data.avatar;
-      // }
-      // updated.username = username;
-
-      // updateUser(updated);
-      // console.log("Profile updated");
-
-      // onClose();
     } catch (error) {
       console.log("Update failed:", error);
     }
-
-    // console.log("Username:", username);
-    // console.log("Profile updated");
-
-    // // close modal
-    // onClose();
   };
 
   return (

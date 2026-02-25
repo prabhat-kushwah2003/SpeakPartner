@@ -30,6 +30,13 @@ export const AuthProvider = ({ children }) => {
     const token = res.data.accessToken;
     localStorage.setItem("accessToken", token);
 
+    // Set login timestamp for today's time tracking (only if not already set for today)
+    const existing = localStorage.getItem("loginTimestamp");
+    const today = new Date().toISOString().slice(0, 10);
+    if (!existing || new Date(Number(existing)).toISOString().slice(0, 10) !== today) {
+      localStorage.setItem("loginTimestamp", Date.now().toString());
+    }
+
     setIsAuthenticated(true);
 
     // Connect socket immediately after login with the fresh token
@@ -41,6 +48,7 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("loginTimestamp");
     setIsAuthenticated(false);
     setUser(null);
 

@@ -1,18 +1,77 @@
+import { useState, useEffect } from "react";
 import { Home, Users, LogOut, Target } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-const Sidebar = () => {
+/**
+ * Returns the date string for "today" in YYYY-MM-DD format.
+ */
+function getTodayDateStr() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-  const { logout } = useAuth()
-  const navigate = useNavigate()
+/**
+ * Returns a valid login timestamp for today.
+ * - If a stored timestamp exists and its date matches today, returns it.
+ * - Otherwise, stores NOW as the timestamp and returns it (midnight reset).
+ */
+function getOrSetLoginTimestamp() {
+  const stored = localStorage.getItem("loginTimestamp");
+  if (stored) {
+    const storedDate = new Date(Number(stored)).toISOString().slice(0, 10);
+    if (storedDate === getTodayDateStr()) {
+      return Number(stored);
+    }
+  }
+  // Either no timestamp or it's from a previous day — reset
+  const now = Date.now();
+  localStorage.setItem("loginTimestamp", now.toString());
+  return now;
+}
+
+const Sidebar = () => {
+  const { logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const [minutes, setMinutes] = useState(0);
+
+  // Calculate elapsed minutes from the stored login timestamp
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const loginTs = getOrSetLoginTimestamp();
+
+    // Immediately calculate elapsed minutes
+    const calcMinutes = () => {
+      const today = getTodayDateStr();
+      const storedDate = new Date(loginTs).toISOString().slice(0, 10);
+
+      // If midnight crossed, reset the timestamp
+      if (storedDate !== today) {
+        const now = Date.now();
+        localStorage.setItem("loginTimestamp", now.toString());
+        setMinutes(0);
+        return;
+      }
+
+      const elapsed = Math.floor((Date.now() - loginTs) / 60000);
+      setMinutes(elapsed);
+    };
+
+    calcMinutes();
+
+    const intervalId = setInterval(calcMinutes, 60000); // update every minute
+
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
-    // localStorage.removeItem("token");
-    logout()
+    localStorage.removeItem("loginTimestamp");
+    logout();
     navigate("/");
-  }
+  };
+
   const activeClass =
     "flex items-center gap-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-xl shadow";
 
@@ -64,7 +123,7 @@ const Sidebar = () => {
           </div>
 
           {/* Minutes Only */}
-          <p className="text-lg font-semibold text-gray-700 mb-2">32 mins</p>
+          <p className="text-lg font-semibold text-gray-700 mb-2">{minutes} mins</p>
 
           <p className="text-xs text-gray-400">Time spent learning today</p>
         </div>
